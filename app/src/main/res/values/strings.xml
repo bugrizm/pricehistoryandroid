@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">Fiyat Günlüğü</string>
+    <string name="action_settings">Settings</string>
+    <string name="title_activity_main_activity">Fiyat Günlüğü</string>
+    <string name="title_activity_price_history">Fiyat Geçmişi</string>
+    <string name="ad_main_banner">ca-app-pub-2886673095866778/7304274841</string>
+    <string name="ad_main_interstitial">ca-app-pub-2886673095866778/8781008048</string>
+    <string name="ad_history_banner">ca-app-pub-2886673095866778/1257741240</string>
+</resources>
