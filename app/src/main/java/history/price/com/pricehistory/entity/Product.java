@@ -12,9 +12,26 @@ public class Product implements Serializable {
     private String name;
     private BigDecimal price;
     private int storeId;
+    private int categoryId;
     private String link;
 
     public Product() {}
+
+    public String getPriceString() {
+        int priceLira = price.intValue()/100;
+        int priceKurus = price.intValue() - (priceLira*100);
+
+        if(priceKurus < 10) {
+            return priceLira + ",0" + priceKurus + " TL";
+        }
+
+        return priceLira + "," + priceKurus + " TL";
+    }
+
+    public String getPriceStringWithoutKurus() {
+        int priceLira = price.intValue()/100;
+        return priceLira + " TL";
+    }
 
     public int getStoreId() {
         return storeId;
@@ -54,5 +71,13 @@ public class Product implements Serializable {
 
     public void setLink(String link) {
         this.link = link;
+    }
+
+    public int getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(int categoryId) {
+        this.categoryId = categoryId;
     }
 }

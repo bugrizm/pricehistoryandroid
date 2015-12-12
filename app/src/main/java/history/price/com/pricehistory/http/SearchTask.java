@@ -82,7 +82,9 @@ public class SearchTask extends AsyncTask<String, Void, String> {
             JSONArray jsonArray = new JSONArray(result);
             activity.updateProductList(jsonArray);
         } catch (JSONException e) {
-            e.printStackTrace();
+            activity.serverError();
+        } catch (NullPointerException e) {
+            activity.serverError();
         }
 
     }

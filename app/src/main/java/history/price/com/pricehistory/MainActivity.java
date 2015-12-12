@@ -1,14 +1,22 @@
 package history.price.com.pricehistory;
 
 import android.content.Context;
-import android.content.Intent;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v7.widget.Toolbar;
+import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
+import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ListView;
+import android.widget.PopupMenu;
+import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
@@ -18,38 +26,66 @@ import com.google.android.gms.ads.InterstitialAd;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import java.io.Serializable;
 import java.math.BigDecimal;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Date;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.List;
 
 import history.price.com.pricehistory.adapter.ProductListAdapter;
 import history.price.com.pricehistory.entity.Product;
-import history.price.com.pricehistory.entity.ProductPrice;
 import history.price.com.pricehistory.http.RetrievePriceHistoryTask;
 import history.price.com.pricehistory.http.SearchTask;
 
 
-public class MainActivity extends ActionBarActivity {
+public class MainActivity extends PriceHistoryOpenerActivity {
 
-    private SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
-
-    private List<Product> productList;
+    private List<Product> originalProductList = new ArrayList<>();
+    private List<Product> productList = new ArrayList<>();
 
     private InterstitialAd interstitialAd;
 
     private static int numberOfSearch = 0;
+
+    private Order order = Order.LOWEST_FIRST;
+    private String selectedStore = "Tüm Mağazalar";
+    private String selectedCategory = "Tüm Kategoriler";
+
+    private TextView noResultTextView;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        Toolbar myToolbar = (Toolbar) findViewById(R.id.mainToolbar);
+        setSupportActionBar(myToolbar);
+
+        noResultTextView = (TextView) findViewById(R.id.noResultText);
+
         initBannerAd();
         initInterstitialAd();
+        requestNewInterstitial();
+
+        EditText searchText = (EditText) findViewById(R.id.searchText);
+
+        searchText.setOnEditorActionListener(new TextView.OnEditorActionListener() {
+            @Override
+            public boolean onEditorAction(TextView v, int actionId, KeyEvent event) {
+                if (actionId == EditorInfo.IME_ACTION_GO) {
+                    search();
+                }
+                return false;
+            }
+        });
+
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle savedInstanceState) {
+        savedInstanceState.putBoolean("MyBoolean", true);
+        super.onSaveInstanceState(savedInstanceState);
     }
 
     private void initBannerAd() {
@@ -77,26 +113,50 @@ public class MainActivity extends ActionBarActivity {
     }
 
     public void onSearchButtonClick(View view) {
+        search();
+    }
+
+    private void search() {
+        String searchString = ((EditText) findViewById(R.id.searchText)).getText().toString();
+
+        if (!isSearchStringValid(searchString)) {
+            Toast.makeText(this, "Arama yapmak için en az üç karakter giriniz.", Toast.LENGTH_LONG).show();
+            return;
+        }
+
         numberOfSearch++;
 
-        if(numberOfSearch%5 == 2) {
-            if(interstitialAd.isLoaded()) {
+        if (numberOfSearch > 0 && numberOfSearch % 5 == 0) {
+            if (interstitialAd.isLoaded()) {
+                isIntersititialAdOpened = true;
                 interstitialAd.show();
             } else {
                 requestNewInterstitial();
             }
         }
 
-        String searchString = ((EditText)findViewById(R.id.searchText)).getText().toString();
-
         SearchTask searchTask = new SearchTask(this, searchString);
         searchTask.execute();
+    }
+
+    private boolean isSearchStringValid(String searchString) {
+        String[] searchWords = searchString.split(" ");
+
+        int numberOfWords = searchWords.length;
+
+        for (String searchWord : searchWords) {
+            if (searchWord.trim().equals("")) {
+                numberOfWords--;
+            }
+        }
+
+        return numberOfWords != 0 && (numberOfWords != 1 || searchWords[0].length() > 2);
     }
 
     public void updateProductList(JSONArray resultArray) {
 
         try {
-            parseProductListJSON(resultArray);
+            originalProductList = parseProductListJSON(resultArray);
             initProductList();
             hideKeyboard();
         } catch (JSONException e) {
@@ -109,7 +169,7 @@ public class MainActivity extends ActionBarActivity {
 
         productList = new ArrayList<>();
 
-        for(int i=0; i<jsonArray.length(); i++) {
+        for (int i = 0; i < jsonArray.length(); i++) {
             JSONArray jsonObject = jsonArray.getJSONArray(i);
 
             Product parsedProduct = new Product();
@@ -118,24 +178,29 @@ public class MainActivity extends ActionBarActivity {
                 parsedProduct.setId(jsonObject.getInt(0));
                 parsedProduct.setName(jsonObject.getString(1));
                 parsedProduct.setLink(jsonObject.getString(2));
-                parsedProduct.setPrice(new BigDecimal(parsePrice(jsonObject.getInt(3))));
+                parsedProduct.setPrice(new BigDecimal(jsonObject.getInt(3)));
                 parsedProduct.setStoreId(jsonObject.getInt(4));
+                parsedProduct.setCategoryId(jsonObject.getInt(5));
 
                 productList.add(parsedProduct);
 
-            } catch(JSONException e) {/*do nothing*/ }
+            } catch (JSONException e) {/*do nothing*/ }
         }
 
         return productList;
     }
 
-    private double parsePrice(int priceInt) {
-        int price1 = priceInt/100;
-        int price2 = priceInt - (price1*100);
-        return price1 + (price2/100);
-    }
-
     public void initProductList() {
+        noResultTextView.setVisibility(View.INVISIBLE);
+        productList = copyOriginalList();
+        filterProductsByStore();
+        filterProductsByCategory();
+        sortProductList();
+
+        if (productList.size() == 0) {
+            noResultTextView.setVisibility(View.VISIBLE);
+        }
+
         final ListView productListView = (ListView) findViewById(R.id.searchResultListView);
         ProductListAdapter adapter = ProductListAdapter.newInstance(getLayoutInflater(), productList);
         productListView.setAdapter(adapter);
@@ -157,46 +222,175 @@ public class MainActivity extends ActionBarActivity {
     private void hideKeyboard() {
         View view = this.getCurrentFocus();
 
-        if(view != null) {
+        if (view != null) {
             InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
         }
     }
 
-    public void openPriceHistoryScreen(JSONArray resultArray, Product product) {
-        try {
-            Intent priceHistoryIntent = new Intent(this, PriceHistoryActivity.class);
-            priceHistoryIntent.putExtra(PriceHistoryActivity.PRICE_HISTORY_LIST_EXTRA, (Serializable) parseProductPriceListJSON(resultArray));
-            priceHistoryIntent.putExtra(PriceHistoryActivity.PRODUCT_EXTRA, (Serializable) product);
-            startActivity(priceHistoryIntent);
-        } catch (JSONException e) {
-            e.printStackTrace();
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_main, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu) {
+        return true;
+    }
+
+    private void sortProductList() {
+        final int sortCoef;
+
+        if (order == Order.HIGHEST_FIRST) {
+            sortCoef = -1;
+        } else {
+            sortCoef = 1;
+        }
+
+        Collections.sort(productList, new Comparator<Product>() {
+            @Override
+            public int compare(Product lhs, Product rhs) {
+                return sortCoef * (lhs.getPrice().intValue() - rhs.getPrice().intValue());
+            }
+        });
+    }
+
+    public void onSortButtonClick(View view) {
+        Button sortButton = (Button) findViewById(R.id.sortButton);
+
+        if (order == Order.LOWEST_FIRST) {
+            order = Order.HIGHEST_FIRST;
+
+            sortButton.setText("Artan");
+            sortButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.up, 0);
+        } else {
+            order = Order.LOWEST_FIRST;
+
+            sortButton.setText("Azalan");
+            sortButton.setCompoundDrawablesWithIntrinsicBounds(0, 0, R.drawable.down, 0);
+        }
+
+        initProductList();
+    }
+
+    public void onStoreButtonClick(View view) {
+        PopupMenu popup = new PopupMenu(this, view);
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.store_button_menu, popup.getMenu());
+        popup.getMenu().clear();
+
+        List<String> storeOptionList = new ArrayList<>();
+        storeOptionList.add("Tüm Mağazalar");
+        storeOptionList.addAll(WelcomeActivity.storeIdMap.keySet());
+        for (final String store : storeOptionList) {
+            popup.getMenu().add(store).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    selectedStore = item.getTitle().toString();
+                    Button storeButton = (Button) findViewById(R.id.storeButton);
+                    storeButton.setText(selectedStore);
+                    initProductList();
+                    return true;
+                }
+            });
+        }
+        popup.show();
+    }
+
+    public void onCategoryButtonClick(View view) {
+        PopupMenu popup = new PopupMenu(this, view);
+        MenuInflater inflater = popup.getMenuInflater();
+        inflater.inflate(R.menu.category_button_menu, popup.getMenu());
+        popup.getMenu().clear();
+
+        List<String> categoryOptionList = new ArrayList<>();
+        categoryOptionList.addAll(WelcomeActivity.categoryIdMap.keySet());
+        Collections.sort(categoryOptionList);
+        categoryOptionList.add(0, "Tüm Kategoriler");
+
+        for (final String category : categoryOptionList) {
+            popup.getMenu().add(category).setOnMenuItemClickListener(new MenuItem.OnMenuItemClickListener() {
+                @Override
+                public boolean onMenuItemClick(MenuItem item) {
+                    selectedCategory = item.getTitle().toString();
+                    Button categoryButton = (Button) findViewById(R.id.categoryButton);
+                    categoryButton.setText(selectedCategory);
+                    initProductList();
+                    return true;
+                }
+            });
+        }
+        popup.show();
+    }
+
+    private void filterProductsByStore() {
+        if (selectedStore.equals("Tüm Mağazalar")) {
+            return;
+        }
+
+        int storeId = WelcomeActivity.storeIdMap.get(selectedStore);
+
+        Iterator<Product> iterator = productList.iterator();
+        while (iterator.hasNext()) {
+            Product p = iterator.next();
+            if (p.getStoreId() != storeId) {
+                iterator.remove();
+            }
+        }
+
+    }
+
+    private void filterProductsByCategory() {
+        if (selectedCategory.equals("Tüm Kategoriler")) {
+            return;
+        }
+
+        int categoryId = WelcomeActivity.categoryIdMap.get(selectedCategory);
+
+        Iterator<Product> iterator = productList.iterator();
+
+        while (iterator.hasNext()) {
+            Product p = iterator.next();
+            if (p.getCategoryId() != categoryId) {
+                iterator.remove();
+            }
         }
     }
 
-    private List<ProductPrice> parseProductPriceListJSON(JSONArray jsonArray) throws JSONException {
+    private List<Product> copyOriginalList() {
+        ArrayList<Product> copyList = new ArrayList<>();
 
-        List<ProductPrice> productPriceList = new ArrayList<>();
-
-        for(int i=0; i<jsonArray.length(); i++) {
-            JSONArray jsonObject = jsonArray.getJSONArray(i);
-
-            ProductPrice parsedProductPrice = new ProductPrice();
-
-            try {
-                parsedProductPrice.setDate(parseDate(jsonObject.getString(0)));
-                parsedProductPrice.setPrice(new BigDecimal(parsePrice(jsonObject.getInt(1))));
-
-                productPriceList.add(parsedProductPrice);
-
-            } catch(Exception e) {/*do nothing*/ }
+        for (Product p : originalProductList) {
+            copyList.add(p);
         }
 
-        return productPriceList;
+        return copyList;
     }
 
-    private Date parseDate(String date) throws ParseException {
-        return format.parse(date);
+    enum Order {
+        HIGHEST_FIRST("Fiyat azalan"),
+        LOWEST_FIRST("Fiyat artan");
+
+        private String text;
+
+        Order(String text) {
+            this.text = text;
+        }
+
+        public String getText() {
+            return text;
+        }
+
+        public static Order getOrder(String text) {
+            if (HIGHEST_FIRST.getText().equals(text)) {
+                return HIGHEST_FIRST;
+            } else if (LOWEST_FIRST.getText().equals(text)) {
+                return LOWEST_FIRST;
+            }
+            throw new RuntimeException();
+        }
     }
 
 }

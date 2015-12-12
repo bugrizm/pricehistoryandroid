@@ -1,10 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <style name="RedButton" parent="TextAppearance.AppCompat.Button">
+    <style name="GreenButton" parent="TextAppearance.AppCompat.Button">
         <item name="android:textColor">@color/white</item>
         <item name="android:background">@drawable/button_background</item>
         <item name="android:shadowRadius">0</item>
         <item name="android:shadowDy">0</item>
         <item name="android:shadowDx">0</item>
+    </style>
+
+    <style name="SearchButton" parent="TextAppearance.AppCompat.Button">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:background">@drawable/search_button_background</item>
+        <item name="android:shadowRadius">0</item>
+        <item name="android:shadowDy">0</item>
+        <item name="android:shadowDx">0</item>
+    </style>
+
+    <style name="GrayButton" parent="TextAppearance.AppCompat.Button">
+        <item name="android:textColor">@color/button_grey</item>
+        <item name="android:background">@drawable/grey_button_background</item>
+        <item name="android:shadowRadius">0</item>
+        <item name="android:shadowDy">0</item>
+        <item name="android:shadowDx">0</item>
+    </style>
+
+    <style name="WhiteButton" parent="TextAppearance.AppCompat.Button">
+        <item name="android:textColor">@color/white</item>
+        <item name="android:background">@drawable/button_background</item>
+        <item name="android:shadowRadius">0</item>
+        <item name="android:shadowDy">0</item>
+        <item name="android:shadowDx">0</item>
+        <item name="android:shadowColor">#FFFFFF</item>
     </style>
 </resources>

@@ -14,7 +14,7 @@ import org.apache.http.params.HttpParams;
 import org.json.JSONArray;
 import org.json.JSONException;
 
-import history.price.com.pricehistory.MainActivity;
+import history.price.com.pricehistory.PriceHistoryOpenerActivity;
 import history.price.com.pricehistory.entity.Product;
 import history.price.com.pricehistory.http.constant.Constants;
 import history.price.com.pricehistory.utils.Tools;
@@ -24,13 +24,14 @@ import history.price.com.pricehistory.utils.Tools;
  * Created by bugri_000 on 4/7/2015.
  */
 public class RetrievePriceHistoryTask extends AsyncTask<String, Void, String> {
-    private MainActivity activity;
+    private PriceHistoryOpenerActivity activity;
+
 
     private ProgressDialog progressDialog;
 
     private Product product;
 
-    public RetrievePriceHistoryTask(MainActivity activity, Product product) {
+    public RetrievePriceHistoryTask(PriceHistoryOpenerActivity activity, Product product) {
         this.activity = activity;
         this.product = product;
         this.progressDialog = Tools.createServiceDialog(activity, "Yükleniyor...", false);
@@ -83,7 +84,9 @@ public class RetrievePriceHistoryTask extends AsyncTask<String, Void, String> {
             JSONArray jsonArray = new JSONArray(result);
             activity.openPriceHistoryScreen(jsonArray, product);
         } catch (JSONException e) {
-            e.printStackTrace();
+            activity.serverError();
+        } catch (NullPointerException e) {
+            activity.serverError();
         }
 
     }

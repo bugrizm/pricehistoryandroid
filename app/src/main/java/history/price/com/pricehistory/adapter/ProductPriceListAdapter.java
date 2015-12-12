@@ -1,5 +1,6 @@
 package history.price.com.pricehistory.adapter;
 
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -52,11 +53,18 @@ public class ProductPriceListAdapter extends BaseAdapter {
         TextView priceText = (TextView) convertView.findViewById(R.id.historyPriceText);
         TextView dateText = (TextView) convertView.findViewById(R.id.historyDateText);
 
+        if(position <=1) {
+            priceText.setTypeface(null, Typeface.BOLD);
+        }
         ProductPrice productPrice = productPriceList.get(position);
 
-        priceText.setText(productPrice.getPrice() + " TL");
-        dateText.setText(format.format(productPrice.getDate()));
+        priceText.setText(productPrice.getPriceString());
 
+        if(position == 0) {
+            dateText.setText("Güncel fiyat");
+        } else {
+            dateText.setText(format.format(productPrice.getDate()));
+        }
         return convertView;
     }
 

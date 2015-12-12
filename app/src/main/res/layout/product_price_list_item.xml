@@ -7,7 +7,7 @@
         android:id="@+id/historyPriceText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="ProductName"
+        android:text="100 TL"
         android:textSize="18sp"
         android:layout_alignParentTop="true"
         android:layout_alignParentEnd="true" />
@@ -16,7 +16,7 @@
         android:id="@+id/historyDateText"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Store"
+        android:text="12.05.2015"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:layout_alignParentTop="true"
         android:layout_alignParentStart="true" />

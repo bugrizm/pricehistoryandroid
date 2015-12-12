@@ -4,12 +4,13 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 
-import java.text.SimpleDateFormat;
 import java.util.List;
 
 import history.price.com.pricehistory.R;
+import history.price.com.pricehistory.WelcomeActivity;
 import history.price.com.pricehistory.entity.Product;
 
 /**
@@ -19,7 +20,6 @@ public class ProductListAdapter extends BaseAdapter {
 
     private List<Product> productList;
     private LayoutInflater inflater;
-    private SimpleDateFormat format = new SimpleDateFormat("dd.MM.yyyy HH:mm");
 
     public static ProductListAdapter newInstance(LayoutInflater inflater, List<Product> productList) {
         ProductListAdapter adapter = new ProductListAdapter();
@@ -46,31 +46,26 @@ public class ProductListAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         if (convertView == null) {
-            convertView = inflater.inflate(R.layout.product_list_item, parent, false);
+            convertView = inflater.inflate(R.layout.product_list_item_wrapper, parent, false);
         }
 
-        TextView productNameText = (TextView) convertView.findViewById(R.id.productNameText);
-        TextView productStoreText = (TextView) convertView.findViewById(R.id.storeText);
-        TextView productPriceText = (TextView) convertView.findViewById(R.id.productPriceText);
+        RelativeLayout layout = (RelativeLayout) convertView.findViewById(R.id.wrapped_item);
+
+        TextView productNameText = (TextView) layout.findViewById(R.id.productNameText);
+        TextView productStoreText = (TextView) layout.findViewById(R.id.storeText);
+        TextView productPriceText = (TextView) layout.findViewById(R.id.productPriceText);
 
         Product product = productList.get(position);
 
         productNameText.setText(product.getName());
         productStoreText.setText(getStoreName(product.getStoreId()));
-        productPriceText.setText(product.getPrice() + " TL");
+        productPriceText.setText(product.getPriceStringWithoutKurus());
 
         return convertView;
     }
 
     private String getStoreName(int storeId) {
-        if(storeId == 1) { return "Teknosa"; }
-        if(storeId == 2) { return "Hepsiburada"; }
-        if(storeId == 3) { return "Kliksa"; }
-        if(storeId == 4) { return "Vatan Bilgisayar"; }
-        if(storeId == 5) { return "Bimeks"; }
-        if(storeId == 6) { return "MediaMarkt"; }
-
-        throw new RuntimeException("Bilinmeyen mağaza. Lütfen uygulamayı güncelleyiniz.");
+        return WelcomeActivity.storeNameMap.get(storeId);
     }
 
 }
